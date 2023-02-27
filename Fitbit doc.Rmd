@@ -1,0 +1,118 @@
+---
+title: "Bellabeat FitBit"
+author: "Roshini Priya"
+date: "2023-02-27"
+output: html_document
+---
+
+##Loading Packages
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+```
+##Importing datasets
+```{r echo=TRUE}
+activity<-read.csv("dailyActivity_merged.csv")
+intensities<-read.csv("hourlyIntensities_merged.csv")
+calories<-read.csv("hourlyCalories_merged.csv")
+sleep<-read.csv("sleepDay_merged.csv")
+weight<-read.csv("weightLogInfo_merged.csv")
+```
+##Formatting
+
+```{r echo=TRUE}
+# intensities
+intensities$ActivityHour=as.POSIXct(intensities$ActivityHour, format="%m/%d/%Y %I:%M:%S %p", tz=Sys.timezone())
+intensities$time <- format(intensities$ActivityHour, format = "%H:%M:%S")
+intensities$date <- format(intensities$ActivityHour, format = "%m/%d/%y")
+# calories
+calories$ActivityHour=as.POSIXct(calories$ActivityHour, format="%m/%d/%Y %I:%M:%S %p", tz=Sys.timezone())
+calories$time <- format(calories$ActivityHour, format = "%H:%M:%S")
+calories$date <- format(calories$ActivityHour, format = "%m/%d/%y")
+# activity
+activity$ActivityDate=as.POSIXct(activity$ActivityDate, format="%m/%d/%Y", tz=Sys.timezone())
+activity$date <- format(activity$ActivityDate, format = "%m/%d/%y")
+# sleep
+sleep$SleepDay=as.POSIXct(sleep$SleepDay, format="%m/%d/%Y %I:%M:%S %p", tz=Sys.timezone())
+sleep$date <- format(sleep$SleepDay, format = "%m/%d/%y")
+```
+##Data Summary
+
+```{r echo=TRUE}
+n_distinct(activity$Id)
+n_distinct(calories$Id)
+n_distinct(intensities$Id)
+n_distinct(sleep$Id)
+n_distinct(weight$Id)
+```
+##Data Analysing
+
+```{r echo=TRUE}
+# activity
+activity %>%  
+  select(TotalSteps,
+         TotalDistance,
+         SedentaryMinutes, Calories) %>%
+  summary()
+
+# explore num of active minutes per category
+activity %>%
+  select(VeryActiveMinutes, FairlyActiveMinutes, LightlyActiveMinutes) %>%
+  summary()
+
+# calories
+calories %>%
+  select(Calories) %>%
+  summary()
+# sleep
+sleep %>%
+  select(TotalSleepRecords, TotalMinutesAsleep, TotalTimeInBed) %>%
+  summary()
+# weight
+weight %>%
+  select(WeightKg, BMI) %>%
+  summary()
+```
+## Merging of data
+
+```{r echo=TRUE}
+merged_data <- merge(sleep, activity, by=c('Id', 'date'))
+head(merged_data)
+```
+## Including Plots for Visualization
+
+1. A positive correlation is seen between the total steps and the calories burnt by the users as follows
+
+```{r echo=TRUE}
+ggplot(data=activity, aes(x=TotalSteps, y=Calories)) + 
+  geom_point() + geom_smooth() + labs(title="Total Steps vs. Calories")
+```
+2. Active hours - 5pm to 7pm which can be seen below
+
+```{r echo=TRUE}
+int_new <- intensities %>%
+  group_by(time) %>%
+  drop_na() %>%
+  summarise(mean_total_int = mean(TotalIntensity))
+
+ggplot(data=int_new, aes(x=time, y=mean_total_int)) + geom_histogram(stat = "identity", fill='darkblue') +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(title="Average Total Intensity vs. Time")
+```
+3. A negative correlation is seen between Sedentary time and Sleep time as follows
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(data=merged_data, aes(x = TotalMinutesAsleep, y = SedentaryMinutes)) + geom_point(color='darkblue')+geom_smooth()+ labs(title="Minutes Asleep vs. Sedentary Minutes")
+```
+
+
+##KEY INSIGHTS & SUGGESTIONS:
+
+1. Since from the summary it is seen that the Average Total Steps by the users are less than 8000, a notification can be sent to the users to encourage them to walk more stating its benefits for a good health.
+2. Since the most activity is happening between 5pm-7pm, a notification to remind the users to go for a walk or run will be useful.
+3. Average Sedentary time is more which is unhealthy, so a notification to stay active and reduce the sedentary time will also be helpful to monitor their activities.
+4. Fitbit does not have information about user hydration level, so bellabeat can try to incorporate this information as well since staying hydrated is also a key factor for a healthy lifestyle.
